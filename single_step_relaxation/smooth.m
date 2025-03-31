@@ -1,6 +1,35 @@
 % 数据读取
-output_combined_filename = './postprocessed/loading_6_relaxation.csv';  % 新增合并文件名
-data = readmatrix('./source_data/6.csv');
+clc;clear;close all
+ii = 8;
+input_dir = './original_data/';
+output_dir = './time_strain_stress/';
+
+input_file_list = {
+    '1d5.csv', ... % 1
+    '2d0_2.csv', ... % 2
+    '2d5.csv', ... % 3
+    '3d0.csv', ... % 4
+    '3d5.csv', ... % 5
+    '4d0.csv', ... % 6
+    '5d0.csv', ... % 7
+    '6d0.csv', ... % 8
+    };
+output_file_list = {
+    '1d5.xlsx', ... % 1
+    '2d0.xlsx', ... % 2
+    '2d5.xlsx', ... % 3
+    '3d0.xlsx', ... % 4
+    '3d5.xlsx', ... % 5
+    '4d0.xlsx', ... % 6
+    '5d0.xlsx', ... % 7
+    '6d0.xlsx', ... % 8
+    };
+loading_rate = 0.25;
+
+input_filename = fullfile(input_dir, input_file_list{ii});
+output_filename = fullfile(output_dir, output_file_list{ii});
+
+data = readmatrix(input_filename);
 time = data(:,1);
 force = data(:,3);
 
@@ -9,9 +38,9 @@ force = data(:,3);
 peak_time = time(peak_idx);
 
 % 分块参数配置
-sg_window_sizes = [5, 10];    % SG滤波窗口[上升段，下降段]
+sg_window_sizes = [15, 150];    % SG滤波窗口[上升段，下降段]
 sg_order = 2;                 % SG多项式阶数
-ma_window_sizes = [2, 5];     % 移动平均窗口[上升段，下降段]
+ma_window_sizes = [5, 15];     % 移动平均窗口[上升段，下降段]
 
 % 分块处理
 blocks = {force(1:peak_idx), force(peak_idx+1:end)};
@@ -42,8 +71,8 @@ sg_force = [sg_blocks{1}; sg_blocks{2}];
 final_force = [ma_blocks{1}; ma_blocks{2}];
 
 %% 数据输出处理
-% 筛选0-200秒数据
-valid_indices = time >= 0 & time <= 200;
+% 筛选0-400秒数据
+valid_indices = time >= 0 & time <= 400;
 time_sub = time(valid_indices);
 force_sub = final_force(valid_indices);
 
@@ -67,7 +96,7 @@ output_rising = output_table(is_rising, :);
 output_falling = output_table(~is_rising, :);
 
 % 处理上升段数据
-output_rising.CalculatedValue = 1 + 0.25 * output_rising.Time_s;
+output_rising.CalculatedValue = 1 + loading_rate * output_rising.Time_s;
 output_rising.AdjustedForce = output_rising.SmoothedForce_N / 22 * 1000;
 
 % 处理下降段数据
@@ -81,7 +110,7 @@ output_falling = output_falling(:, {'Time_s', 'CalculatedValue', 'AdjustedForce'
 combined_output = [output_rising; output_falling];  % 合并数据
 
 % 保存合并结果
-writetable(combined_output, output_combined_filename);
+writetable(combined_output, output_filename);
 
 %% 增强可视化
 figure('Position', [100 100 1200 800], 'Color', 'w')
@@ -118,7 +147,7 @@ title(sprintf('Dual-stage Smoothing Process\nSG Windows: [%d, %d] | MA Windows: 
     ma_window_sizes(1), ma_window_sizes(2)),...
     'FontSize', 16, 'FontWeight', 'bold')
 legend('Location', 'northwest', 'FontSize', 12)
-xlim([0 200])
+xlim([0 8])
 ylim([min(final_force(valid_indices))*0.95 max(final_force(valid_indices))*1.05])
 
 % 添加参数标注
