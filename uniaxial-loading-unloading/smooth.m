@@ -1,6 +1,6 @@
 % 数据读取
 clc;clear;close all
-ii = 1;
+ii = 12;
 input_dir = './original_data/';
 output_dir = './time_strain_stress/';
 
@@ -38,17 +38,22 @@ loading_rate = [0.01, 0.01, 0.01, 0.01, ...
 
 input_filename = fullfile(input_dir, input_file_list{ii});
 output_filename = fullfile(output_dir, output_file_list{ii});
+delete(output_filename);
 
 data = readmatrix(input_filename);
 time = data(:,1);
+disp = data(:,2);
 force = data(:,3);
 
-% === 新增：数据清洗 ===
 force(1) = 0;  % 首项归零
-negative_mask = force(2:end) < 0;
-negative_mask = [false; negative_mask];
-time(negative_mask) = [];
-force(negative_mask) = [];
+
+% 问题1：错误使用&&运算符（需改为&）
+% 问题2：首项归零与force>0的条件冲突
+valid_mask = (disp >= 0 & force > 0.01);  % 正确写法：元素级逻辑与
+
+time = time(valid_mask);
+disp = disp(valid_mask);
+force = force(valid_mask);
 
 % === 调试输出 ===
 fprintf('清洗后数据点数: %d\n', length(time));
@@ -59,7 +64,7 @@ fprintf('首项力值: %.2f N\n', force(1));
 peak_time = time(peak_idx);
 
 % 分块参数配置
-sg_window_sizes = [25, 25];    % SG滤波窗口[上升段，下降段]
+sg_window_sizes = [15, 15];    % SG滤波窗口[上升段，下降段]
 sg_order = 2;                 % SG多项式阶数
 ma_window_sizes = [5, 10];     % 移动平均窗口[上升段，下降段]
 
@@ -130,8 +135,6 @@ time_since_peak = output_falling.Time_s - peak_time;
 % 定义下降段CalculatedValue（从峰值开始线性递减）
 output_falling.CalculatedValue = max_rising_value - loading_rate(ii) * time_since_peak;
 
-% 保证CalculatedValue不出现负值
-output_falling.CalculatedValue(output_falling.CalculatedValue < 0) = 0;
 
 % 计算AdjustedForce
 output_falling.AdjustedForce = output_falling.SmoothedForce_N / 22 * 1000;

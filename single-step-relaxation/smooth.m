@@ -1,6 +1,6 @@
 % 数据读取
 clc;clear;close all
-ii = 2;
+ii = 1;
 input_dir = './original_data/';
 output_dir = './time_strain_stress/';
 
@@ -32,15 +32,15 @@ output_filename = fullfile(output_dir, output_file_list{ii});
 data = readmatrix(input_filename);
 time = data(:,1);
 force = data(:,3);
-
+force(1) = 0.0;
 % 确定峰值位置
 [~, peak_idx] = max(force);
 peak_time = time(peak_idx);
 
 % 分块参数配置
-sg_window_sizes = [15, 150];    % SG滤波窗口[上升段，下降段]
+sg_window_sizes = [15, 200];    % SG滤波窗口[上升段，下降段]
 sg_order = 2;                 % SG多项式阶数
-ma_window_sizes = [5, 15];     % 移动平均窗口[上升段，下降段]
+ma_window_sizes = [5, 20];     % 移动平均窗口[上升段，下降段]
 
 % 分块处理
 blocks = {force(1:peak_idx), force(peak_idx+1:end)};
@@ -147,7 +147,7 @@ title(sprintf('Dual-stage Smoothing Process\nSG Windows: [%d, %d] | MA Windows: 
     ma_window_sizes(1), ma_window_sizes(2)),...
     'FontSize', 16, 'FontWeight', 'bold')
 legend('Location', 'northwest', 'FontSize', 12)
-xlim([0 8])
+xlim([0 400])
 ylim([min(final_force(valid_indices))*0.95 max(final_force(valid_indices))*1.05])
 
 % 添加参数标注
